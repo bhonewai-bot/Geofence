@@ -1,36 +1,119 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Geofence Alert
+
+`geofence-alert` is a small Next.js prototype for a Smart Geofencing Alert System. The goal is to build a map-first demo that shows geofence orchestration without turning the project into a full production platform.
+
+## Prototype Goal
+
+The prototype should let a user:
+
+- view a large interactive map
+- create and remove polygon geofences
+- simulate a moving target
+- detect geofence enter and exit transitions
+- review a compact alert log
+
+This repository is intentionally scoped as a prototype. It should stay lightweight, easy to demo, and easy to explain.
+
+## Design Principles
+
+- white theme
+- map-first layout
+- minimal supporting UI
+- simple, user-friendly interactions
+- no unnecessary dashboards or decorative analytics
+
+## Planned Stack
+
+Core framework:
+
+- `next`
+- `react`
+- `react-dom`
+
+Prototype dependencies to add:
+
+- `leaflet`
+- `react-leaflet`
+- `leaflet-draw`
+- `react-leaflet-draw`
+- `@turf/turf`
+- `zustand`
+- `@types/leaflet` as a dev dependency
+
+## Planned Folder Structure
+
+```text
+app/
+  globals.css
+  layout.tsx
+  page.tsx
+components/
+  dashboard/
+    geofence-dashboard.tsx
+    topbar.tsx
+    sidebar.tsx
+    geofence-list.tsx
+    alert-card.tsx
+    simulation-controls.tsx
+  map/
+    geofence-map.tsx
+    map-draw-controls.tsx
+    target-marker.tsx
+    geofence-layer.tsx
+lib/
+  geofence/
+    evaluate-geofence.ts
+    detect-transition.ts
+    geojson.ts
+  mock/
+    target-simulator.ts
+  storage/
+    local-persistence.ts
+store/
+  use-geofence-store.ts
+types/
+  geofence.ts
+```
+
+## Data Flow
+
+The intended prototype flow is:
+
+1. a simulated target publishes new coordinates on an interval
+2. Turf.js checks whether the target is inside each geofence
+3. the app compares current state with previous state
+4. enter or exit alerts are created only when the state changes
+5. geofences and relevant UI state can be persisted locally
+
+## Out Of Scope
+
+Unless the project direction changes, do not treat these as prototype requirements:
+
+- authentication
+- backend database
+- webhook delivery
+- multi-user collaboration
+- real-time external GPS feeds
+- analytics-heavy dashboards
 
 ## Getting Started
 
-First, run the development server:
+Install dependencies:
+
+```bash
+npm install
+```
+
+Run the development server:
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000) in the browser.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Notes For Contributors
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- Read project-specific guidance in [`AGENTS.md`](./AGENTS.md).
+- `CLAUDE.md` mirrors the same prototype direction for Claude-based tooling.
+- This project uses Next.js `16.2.4`, so read the relevant docs in `node_modules/next/dist/docs/` before making framework-level assumptions.
