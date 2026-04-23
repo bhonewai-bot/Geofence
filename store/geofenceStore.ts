@@ -31,6 +31,7 @@ export const useGeofenceStore = create<GeofenceStore>((set) => ({
             [16.723, 98.575],
             [16.725, 98.578],
             [16.727, 98.581],
+            [16.719, 98.569],
           ],
         ],
       },

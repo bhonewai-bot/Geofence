@@ -7,7 +7,7 @@ export function layerToGeofence(layer: any): Geofence {
   return {
     id: generateId(),
     name: "New Geofence",
-    color: "#0000FF",
+    color: "#4169E1",
     geometry: layer.toGeoJSON().geometry,
   };
 }

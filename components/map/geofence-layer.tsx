@@ -8,7 +8,7 @@ function GeofenceLayer() {
       {geofences.map((fence) => (
         <Polygon
           key={fence.id}
-          pathOptions={{ color: fence.color, fillColor: fence.color }}
+          pathOptions={{ color: fence.color, fillColor: "lightblue" }}
           positions={fence.geometry.coordinates[0].map((coord) => [
             coord[1],
             coord[0],

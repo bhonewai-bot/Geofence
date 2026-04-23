@@ -9,11 +9,11 @@ interface GeofenceDashboardProps {
 
 function GeofenceDashboard({ map }: GeofenceDashboardProps) {
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full overflow-hidden">
       <Topbar />
-      <div className="flex flex-1 min-h-0">
+      <div className="flex flex-1 min-h-0 overflow-hidden">
         <Sidebar />
-        <main className="flex-1 relative">{map}</main>
+        <main className="flex-1 relative overflow-hidden">{map}</main>
       </div>
     </div>
   );
