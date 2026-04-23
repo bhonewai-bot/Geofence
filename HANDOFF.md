@@ -23,98 +23,120 @@ A small Next.js prototype for a Smart Geofencing Alert System. Map-first, single
 - Tailwind CSS 4
 - TypeScript
 
-> ⚠️ `react-leaflet` and `react-leaflet-draw` are listed in README/AGENTS.md but are NOT yet in package.json. Run `npm install react-leaflet react-leaflet-draw` before building map components.
-
 ---
 
 ## Completed Files
 
 ### `types/geofence.ts` ✅
-
 Defines all core types:
-
 - `Geofence` — polygon zone with id, name, color, GeoJSON geometry
 - `Target` — moving point with id, name, lat, lng
 - `AlertEvent` — enter/exit event with fenceId, targetId, type, createdAt
 - `PresenceState` — `Record<string, boolean>` mapping fenceId → inside/outside
 
 ### `store/geofenceStore.ts` ✅
-
 Zustand store with:
-
-- `geofences: Geofence[]` — all drawn zones
-- `target: Target | null` — the single simulated target
-- `alerts: AlertEvent[]` — log of all enter/exit events
-- `presenceByFence: PresenceState` — current inside/outside state per fence
-- `isSimulating: boolean` — whether mock feed is running
+- `geofences: Geofence[]`, `target: Target | null`, `alerts: AlertEvent[]`
+- `presenceByFence: PresenceState`, `isSimulating: boolean`
 - Actions: `addGeofence`, `removeGeofence`, `setTarget`, `setAlert`, `setPresence`, `toggleSimulation`
 
 ### `lib/geofence/evaluate-geofence.ts` ✅
-
-Single function: `isTargetInsideFence(target, fence): boolean`
-
-- Uses `turf.point([lng, lat])` and `turf.booleanPointInPolygon()`
-- ⚠️ Key gotcha: Turf.js uses [longitude, latitude] order, NOT [lat, lng]
+- `isTargetInsideFence(target, fence): boolean`
+- Uses `turf.point([lng, lat])` — ⚠️ longitude first, always
 
 ### `lib/geofence/detect-transition.ts` ✅
-
-Function: `detectTransition(target, fences, presenceByFence): { fenceId: string; type: "enter" | "exit" }[]`
-
-- Loops over all fences
-- Calls `isTargetInsideFence` for current state
-- Compares with `presenceByFence` for previous state
-- Only pushes a transition when state actually changes
-- Returns array — multiple fences can transition in one tick
-- Uses `?? false` to safely handle fences the target has never been near
+- `detectTransition(target, fences, presenceByFence): { fenceId, type }[]`
+- Calls `isTargetInsideFence` for current state, diffs against `presenceByFence`
+- Only emits when state actually changes
 
 ### `lib/geofence/geojson.ts` ✅
+- `layerToGeofence(layer): Geofence` — via `layer.toGeoJSON().geometry`
+- `generateId(): string` — via `crypto.randomUUID()`
 
-Two utility functions:
+### `lib/mock/target-simulator.ts` ✅
+- `createSimulator(onTick): { start, stop }`
+- 5-waypoint path around Mae Sot
+- Stable target ID: `"simulated-target"`
+- `setInterval` inside `start()`, null-guarded `clearInterval` in `stop()`
 
-- `layerToGeofence(layer): Geofence` — converts a leaflet-draw layer to a Geofence object via `layer.toGeoJSON().geometry`
-- `generateId(): string` — returns `crypto.randomUUID()` for unique fence IDs
+### `lib/storage/local-persistence.ts` ✅
+- `saveGeofences(geofences): void` — JSON stringify to localStorage key `"geofences"`
+- `loadGeofences(): Geofence[]` — JSON parse with try/catch fallback to `[]`
+- SSR guarded with `typeof window !== "undefined"`
+
+### `app/page.tsx` ✅
+- Dynamically imports `GeofenceMap` with `ssr: false`
+- Correctly prevents Leaflet SSR crash
+
+### `components/map/geofence-map.tsx` ✅
+- `MapContainer` centered on Mae Sot `[16.723, 98.575]`, zoom 14
+- `style={{ height: "100vh", width: "100%" }}`
+- Imports `leaflet/dist/leaflet.css`
+- Renders `<GeofenceLayer />`, `<MapDrawControls />`, `<TargetMarker />` inside the map
+
+### `components/map/geofence-layer.tsx` ✅
+- Reads `geofences` from store via selector hook
+- Maps each fence to a `<Polygon>` with coordinate flip `[lng, lat] → [lat, lng]`
+- Uses `fence.color` for both `color` and `fillColor`
+
+### `components/map/map-draw-controls.tsx` ✅
+- `FeatureGroup` wraps `EditControl` from `react-leaflet-draw`
+- `handleCreate`: calls `layerToGeofence(e.layer)`, stores fence ID via `e.layer.options.id = fence.id`, calls `addGeofence`
+- `handleDelete`: uses `e.layers.eachLayer` with `onDeleted`
+- Draw toolbar: polygon only, all other tools disabled
+- ⚠️ Draw toolbar UI is unstyled — polish deferred to later
+
+### `components/map/target-marker.tsx` ✅
+- Reads `target` from store via selector hook
+- Returns `null` when target is null
+- Patches Leaflet default icon with `L.Icon.Default.mergeOptions()` to fix webpack broken icon issue
+- Renders `<Marker position={[target.lat, target.lng]} />`
 
 ---
 
 ## In Progress
 
-### `lib/mock/target-simulator.ts` ✅
+### `components/dashboard/simulation-controls.tsx` 🔄
+The component that wires the simulator to the UI.
 
-Function: `createSimulator(onTick): { start, stop }`
+Key concepts:
+- Reads `isSimulating` and `toggleSimulation` from store
+- Creates the simulator instance with `createSimulator(onTick)`
+- `onTick` callback should:
+  1. Call `detectTransition(target, fences, presenceByFence)`
+  2. For each transition: call `setAlert` and `setPresence`
+  3. Call `setTarget` to update target position on map
+- Use `useRef` to hold the simulator instance so it persists across renders
+- Call `simulator.start()` / `simulator.stop()` when `isSimulating` changes (via `useEffect`)
+- Renders a single start/stop button
 
-- Hardcoded waypoints (Mae Sot area coordinates)
-- `setInterval` at 1000ms drives ticks, `clearInterval` stops it
-- Index wraps with `% path.length`
-- Imports `generateId` from geojson util
-
-**Known issues fixed during review:**
-- `id: generateId()` was inside the interval (regenerated every tick) — must be moved outside so the target ID is stable across ticks
-- `stop()` should reset `intervalId` to `null` after clearing
-- No double-start guard — calling `start()` twice creates two intervals
+Intern is currently attempting this file.
 
 ---
 
 ## Remaining Files (Not Started)
 
 ```
-lib/storage/
-  local-persistence.ts      ← localStorage save/load for geofences  🔄 IN PROGRESS
-
-components/map/
-  geofence-map.tsx          ← react-leaflet map + draw controls
-  map-draw-controls.tsx     ← leaflet-draw integration
-  target-marker.tsx         ← animated marker for simulated target
-  geofence-layer.tsx        ← renders polygon zones on map
-
 components/dashboard/
   geofence-dashboard.tsx    ← top-level layout shell
   topbar.tsx                ← minimal top bar
   sidebar.tsx               ← left sidebar container
-  geofence-list.tsx         ← list of active geofences
+  geofence-list.tsx         ← list of active geofences with remove button
   alert-card.tsx            ← single alert event display
-  simulation-controls.tsx   ← start/stop simulation button
+```
 
-app/page.tsx                ← final layout wiring
+---
+
+## Recommended Build Order for Remaining Components
+
+```
+1. simulation-controls.tsx  ← wire simulator to store (in progress)
+2. geofence-list.tsx        ← sidebar fence list
+3. alert-card.tsx           ← alert event display
+4. sidebar.tsx              ← combines 1+2+3
+5. topbar.tsx               ← minimal top bar
+6. geofence-dashboard.tsx   ← full layout assembly
+7. app/page.tsx             ← update final wiring
 ```
 
 ---
@@ -122,7 +144,6 @@ app/page.tsx                ← final layout wiring
 ## Architecture Notes
 
 ### Data Flow
-
 ```
 target-simulator (setInterval)
         ↓
@@ -131,43 +152,48 @@ detectTransition(target, fences, presenceByFence)
         ↓
 transitions[] → store.setPresence + store.setAlert
         ↓
-UI re-renders (AlertLog, map markers)
+UI re-renders (GeofenceLayer, TargetMarker, AlertLog)
 ```
 
 ### State Diffing Pattern
-
-`presenceByFence` stores the PREVIOUS known state. On every simulator tick:
-
-1. Check current position against all fences
-2. Compare current vs previous
-3. Emit only when state changes (enter/exit)
-4. Update presenceByFence with new current state
+On every simulator tick:
+1. Check current position against all fences via `isTargetInsideFence`
+2. Compare against `presenceByFence` (previous state)
+3. Emit only when state changes
+4. Update `presenceByFence` with new state
 
 ### Layout Intent
-
-- White theme
-- Map takes up most of the screen
+- White theme, map-first
+- Map takes full screen
 - Narrow left sidebar: geofence list + simulation controls
-- Compact alert log (floating or inline, not a heavy dashboard)
+- Compact alert log floating or inline
+
+### Key Next.js / Leaflet Gotchas
+- Always use `dynamic(() => import(...), { ssr: false })` for map components
+- Always guard localStorage with `typeof window !== "undefined"`
+- Leaflet uses `[lat, lng]`, GeoJSON/Turf uses `[lng, lat]` — always flip when bridging
+- Leaflet default marker icons break in webpack — always patch with `L.Icon.Default.mergeOptions()`
 
 ---
 
 ## Key Decisions Made
 
-| Decision         | Choice                            | Reason                                                           |
-| ---------------- | --------------------------------- | ---------------------------------------------------------------- |
-| State management | Zustand                           | No boilerplate, sufficient for prototype scale                   |
-| Geo logic        | Client-side Turf.js (main thread) | Calculation is <5ms at prototype scale, Worker adds IPC overhead |
-| Persistence      | localStorage                      | No backend needed for prototype                                  |
-| Map engine       | react-leaflet                     | Free, lightweight, no API key                                    |
-| Scope            | Single target, client-side only   | Keeps prototype explainable and demoable                         |
+| Decision | Choice | Reason |
+|---|---|---|
+| State management | Zustand selector hooks | Prevents unnecessary re-renders |
+| Geo logic | Client-side Turf.js, main thread | <5ms at prototype scale |
+| Persistence | localStorage | No backend needed |
+| Map engine | react-leaflet | Free, no API key |
+| Target ID | Hardcoded `"simulated-target"` | Stable ID required for presence diffing |
+| Map import | `dynamic` with `ssr: false` | Leaflet requires browser environment |
+| Fence ID on layer | `e.layer.options.id = fence.id` | Required for delete handler to identify which fence to remove |
+| Draw toolbar polish | Deferred | Functionality over appearance for prototype |
 
 ---
 
 ## Teaching Notes (Intern Context)
 
 This project is being built by an intern learning as they go. The approach is:
-
 - Intern attempts each file independently
 - Brings code back for review
 - Claude reviews, explains issues, gives skeleton hints

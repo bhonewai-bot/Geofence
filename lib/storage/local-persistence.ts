@@ -1,7 +1,6 @@
 import { Geofence } from "@/types/geofence";
 
 // localStorage read/write
-
 const fenceKey = "geofences";
 export function saveGeofences(geofences: Geofence[]): void {
   if (typeof window !== "undefined") {

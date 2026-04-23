@@ -1,5 +1,4 @@
 import { Target } from "@/types/geofence";
-import { generateId } from "../geofence/geojson";
 
 // simulated GPS movement
 export function createSimulator(onTick: (target: Target) => void): {
@@ -20,7 +19,7 @@ export function createSimulator(onTick: (target: Target) => void): {
   const start = () => {
     intervalId = setInterval(() => {
       const target: Target = {
-        id: generateId(),
+        id: "simulated-target",
         name: "Simulated Target",
         lat: path[currentIndex].lat,
         lng: path[currentIndex].lng,

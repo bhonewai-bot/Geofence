@@ -1,3 +1,5 @@
+import { generateId } from "@/lib/geofence/geojson";
+import { createSimulator } from "@/lib/mock/target-simulator";
 import { AlertEvent, Geofence, PresenceState, Target } from "@/types/geofence";
 import { create } from "zustand";
 
@@ -16,9 +18,32 @@ type GeofenceStore = {
 };
 
 export const useGeofenceStore = create<GeofenceStore>((set) => ({
-  geofences: [],
+  geofences: [
+    {
+      id: generateId(),
+      name: "Geofence 1",
+      color: "lime",
+      geometry: {
+        type: "Polygon",
+        coordinates: [
+          [
+            [16.719, 98.569],
+            [16.721, 98.572],
+            [16.723, 98.575],
+            [16.725, 98.578],
+            [16.727, 98.581],
+          ],
+        ],
+      },
+    },
+  ],
 
-  target: null,
+  target: {
+    id: "simulated-target",
+    name: "Simulated Target",
+    lat: 16.719,
+    lng: 98.569,
+  },
 
   alerts: [],
 
