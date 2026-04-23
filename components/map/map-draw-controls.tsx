@@ -3,19 +3,19 @@ import { useGeofenceStore } from "@/store/geofenceStore";
 import { FeatureGroup } from "react-leaflet";
 import { EditControl } from "react-leaflet-draw";
 import L from "leaflet";
-import "leaflet-draw";
+import type { DrawEvents } from "leaflet";
 
 function MapDrawControls() {
   const addGeofence = useGeofenceStore((state) => state.addGeofence);
   const removeGeofence = useGeofenceStore((state) => state.removeGeofence);
 
-  const handleCreate = (e: L.DrawEvents.Created) => {
+  const handleCreate = (e: DrawEvents.Created) => {
     const fence = layerToGeofence(e.layer);
-    e.layer.options.id = fence.id;
+    (e.layer.options as L.PathOptions & { id: string }).id = fence.id;
     addGeofence(fence);
   };
 
-  const handleDelete = (e: L.DrawEvents.Deleted) => {
+  const handleDelete = (e: DrawEvents.Deleted) => {
     e.layers.eachLayer((layer) => {
       const l = layer as L.Layer & { options: { id: string } };
       removeGeofence(l.options.id);
