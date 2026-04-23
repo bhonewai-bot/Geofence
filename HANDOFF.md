@@ -28,116 +28,97 @@ A small Next.js prototype for a Smart Geofencing Alert System. Map-first, single
 ## Completed Files
 
 ### `types/geofence.ts` ✅
-Defines all core types:
-- `Geofence` — polygon zone with id, name, color, GeoJSON geometry
-- `Target` — moving point with id, name, lat, lng
-- `AlertEvent` — enter/exit event with fenceId, targetId, type, createdAt
-- `PresenceState` — `Record<string, boolean>` mapping fenceId → inside/outside
+- `Geofence`, `Target`, `AlertEvent`, `PresenceState`
+- `AlertEvent` uses `geometryId` (not `fenceId`) for the fence reference
 
 ### `store/geofenceStore.ts` ✅
-Zustand store with:
-- `geofences: Geofence[]`, `target: Target | null`, `alerts: AlertEvent[]`
-- `presenceByFence: PresenceState`, `isSimulating: boolean`
+- `geofences`, `target`, `alerts`, `presenceByFence`, `isSimulating`
 - Actions: `addGeofence`, `removeGeofence`, `setTarget`, `setAlert`, `setPresence`, `toggleSimulation`
 
 ### `lib/geofence/evaluate-geofence.ts` ✅
 - `isTargetInsideFence(target, fence): boolean`
-- Uses `turf.point([lng, lat])` — ⚠️ longitude first, always
+- ⚠️ Turf.js uses `[lng, lat]` order
 
 ### `lib/geofence/detect-transition.ts` ✅
 - `detectTransition(target, fences, presenceByFence): { fenceId, type }[]`
-- Calls `isTargetInsideFence` for current state, diffs against `presenceByFence`
-- Only emits when state actually changes
+- Diffs current vs previous state, only emits on change
 
 ### `lib/geofence/geojson.ts` ✅
-- `layerToGeofence(layer): Geofence` — via `layer.toGeoJSON().geometry`
-- `generateId(): string` — via `crypto.randomUUID()`
+- `layerToGeofence(layer): Geofence`
+- `generateId(): string` via `crypto.randomUUID()`
 
 ### `lib/mock/target-simulator.ts` ✅
 - `createSimulator(onTick): { start, stop }`
-- 5-waypoint path around Mae Sot
-- Stable target ID: `"simulated-target"`
-- `setInterval` inside `start()`, null-guarded `clearInterval` in `stop()`
+- 5-waypoint path around Mae Sot, stable ID `"simulated-target"`
 
 ### `lib/storage/local-persistence.ts` ✅
-- `saveGeofences(geofences): void` — JSON stringify to localStorage key `"geofences"`
-- `loadGeofences(): Geofence[]` — JSON parse with try/catch fallback to `[]`
-- SSR guarded with `typeof window !== "undefined"`
+- `saveGeofences` / `loadGeofences` with SSR guard and try/catch
+
+### `app/layout.tsx` ✅
+- `h-full overflow-hidden` on body for full-height layout
+- Title updated to "Geofence Alert"
 
 ### `app/page.tsx` ✅
-- Dynamically imports `GeofenceMap` with `ssr: false`
-- Correctly prevents Leaflet SSR crash
+- `GeofenceDashboard` with `GeofenceMap` passed as `map` prop
+- `GeofenceMap` loaded via `dynamic` with `ssr: false` and loading fallback
 
 ### `components/map/geofence-map.tsx` ✅
-- `MapContainer` centered on Mae Sot `[16.723, 98.575]`, zoom 14
-- `style={{ height: "100vh", width: "100%" }}`
-- Imports `leaflet/dist/leaflet.css`
-- Renders `<GeofenceLayer />`, `<MapDrawControls />`, `<TargetMarker />` inside the map
+- `MapContainer` centered on Mae Sot, `height: 100vh`
+- Renders `GeofenceLayer`, `MapDrawControls`, `TargetMarker`
 
 ### `components/map/geofence-layer.tsx` ✅
-- Reads `geofences` from store via selector hook
-- Maps each fence to a `<Polygon>` with coordinate flip `[lng, lat] → [lat, lng]`
-- Uses `fence.color` for both `color` and `fillColor`
+- Selector hook for `geofences`, coord flip `[lng,lat] → [lat,lng]`
+- Uses `fence.color` for polygon fill
 
 ### `components/map/map-draw-controls.tsx` ✅
-- `FeatureGroup` wraps `EditControl` from `react-leaflet-draw`
-- `handleCreate`: calls `layerToGeofence(e.layer)`, stores fence ID via `e.layer.options.id = fence.id`, calls `addGeofence`
-- `handleDelete`: uses `e.layers.eachLayer` with `onDeleted`
-- Draw toolbar: polygon only, all other tools disabled
-- ⚠️ Draw toolbar UI is unstyled — polish deferred to later
+- `FeatureGroup` + `EditControl`, polygon only
+- `e.layer.options.id = fence.id` on create for delete tracking
 
 ### `components/map/target-marker.tsx` ✅
-- Reads `target` from store via selector hook
-- Returns `null` when target is null
-- Patches Leaflet default icon with `L.Icon.Default.mergeOptions()` to fix webpack broken icon issue
-- Renders `<Marker position={[target.lat, target.lng]} />`
+- Leaflet icon patch via `L.Icon.Default.mergeOptions()`
+- Null guard when `target` is null
+
+### `components/dashboard/simulation-controls.tsx` ✅
+- `useRef` holds simulator, `useEffect` on `isSimulating`
+- `getState()` inside callback avoids stale closure
+- `geometryId` correctly used in `setAlert`
+- Button: blue when idle, red when simulating
+
+### `components/dashboard/geofence-list.tsx` ✅
+- Color dot via inline `style={{ backgroundColor: fence.color }}`
+- Delete button hidden until row hover via `group-hover`
+- Empty state message when no geofences
+
+### `components/dashboard/alert-card.tsx` ✅
+- Soft green/red badge for enter/exit
+- Time formatted via `toLocaleTimeString`
+- `geometryId.slice(0, 8)` for compact zone display
+
+### `components/dashboard/topbar.tsx` ✅
+- Fixed `h-12` top bar with logo mark, title, subtitle
+- No logic — pure layout
+
+### `components/dashboard/sidebar.tsx` ✅
+- `w-72` fixed width, white bg, border-right
+- Sections: Geofences (with count badge) → Alerts (scrollable, newest first) → SimulationControls pinned at bottom
+- Alerts reversed so newest appears at top
+
+### `components/dashboard/geofence-dashboard.tsx` ✅
+- Layout shell: Topbar + (Sidebar | map)
+- Map passed as `React.ReactNode` prop to keep dashboard SSR-safe
 
 ---
 
-## In Progress
+## Remaining Work
 
-### `components/dashboard/simulation-controls.tsx` 🔄
-The component that wires the simulator to the UI.
+### Functional
+- `lib/storage/local-persistence.ts` is written but **not yet wired up** — geofences are not saved/loaded from localStorage on mount. Wire in `geofence-dashboard.tsx` or `sidebar.tsx` using a `useEffect` on mount.
 
-Key concepts:
-- Reads `isSimulating` and `toggleSimulation` from store
-- Creates the simulator instance with `createSimulator(onTick)`
-- `onTick` callback should:
-  1. Call `detectTransition(target, fences, presenceByFence)`
-  2. For each transition: call `setAlert` and `setPresence`
-  3. Call `setTarget` to update target position on map
-- Use `useRef` to hold the simulator instance so it persists across renders
-- Call `simulator.start()` / `simulator.stop()` when `isSimulating` changes (via `useEffect`)
-- Renders a single start/stop button
-
-Intern is currently attempting this file.
-
----
-
-## Remaining Files (Not Started)
-
-```
-components/dashboard/
-  geofence-dashboard.tsx    ← top-level layout shell
-  topbar.tsx                ← minimal top bar
-  sidebar.tsx               ← left sidebar container
-  geofence-list.tsx         ← list of active geofences with remove button
-  alert-card.tsx            ← single alert event display
-```
-
----
-
-## Recommended Build Order for Remaining Components
-
-```
-1. simulation-controls.tsx  ← wire simulator to store (in progress)
-2. geofence-list.tsx        ← sidebar fence list
-3. alert-card.tsx           ← alert event display
-4. sidebar.tsx              ← combines 1+2+3
-5. topbar.tsx               ← minimal top bar
-6. geofence-dashboard.tsx   ← full layout assembly
-7. app/page.tsx             ← update final wiring
-```
+### Polish (deferred)
+- Draw toolbar UI is unstyled (leaflet-draw default)
+- Fence names are all "New Geofence" — no rename UI yet
+- Alert zone display shows truncated UUID — would be better as fence name
+- `scrollWheelZoom` is disabled on map — consider enabling
 
 ---
 
@@ -152,27 +133,15 @@ detectTransition(target, fences, presenceByFence)
         ↓
 transitions[] → store.setPresence + store.setAlert
         ↓
-UI re-renders (GeofenceLayer, TargetMarker, AlertLog)
+UI re-renders (GeofenceLayer, TargetMarker, AlertCard)
 ```
 
-### State Diffing Pattern
-On every simulator tick:
-1. Check current position against all fences via `isTargetInsideFence`
-2. Compare against `presenceByFence` (previous state)
-3. Emit only when state changes
-4. Update `presenceByFence` with new state
-
-### Layout Intent
-- White theme, map-first
-- Map takes full screen
-- Narrow left sidebar: geofence list + simulation controls
-- Compact alert log floating or inline
-
-### Key Next.js / Leaflet Gotchas
-- Always use `dynamic(() => import(...), { ssr: false })` for map components
-- Always guard localStorage with `typeof window !== "undefined"`
-- Leaflet uses `[lat, lng]`, GeoJSON/Turf uses `[lng, lat]` — always flip when bridging
-- Leaflet default marker icons break in webpack — always patch with `L.Icon.Default.mergeOptions()`
+### Key Gotchas
+- Leaflet SSR: always `dynamic(..., { ssr: false })`
+- localStorage: always guard with `typeof window !== "undefined"`
+- GeoJSON vs Leaflet coords: `[lng, lat]` vs `[lat, lng]` — always flip at the boundary
+- Stale closures in callbacks: use `getState()` not selector values
+- `AlertEvent.geometryId` not `fenceId` — match the type exactly
 
 ---
 
@@ -180,14 +149,14 @@ On every simulator tick:
 
 | Decision | Choice | Reason |
 |---|---|---|
-| State management | Zustand selector hooks | Prevents unnecessary re-renders |
+| State management | Zustand | No boilerplate, selector hooks prevent extra re-renders |
 | Geo logic | Client-side Turf.js, main thread | <5ms at prototype scale |
 | Persistence | localStorage | No backend needed |
 | Map engine | react-leaflet | Free, no API key |
-| Target ID | Hardcoded `"simulated-target"` | Stable ID required for presence diffing |
-| Map import | `dynamic` with `ssr: false` | Leaflet requires browser environment |
-| Fence ID on layer | `e.layer.options.id = fence.id` | Required for delete handler to identify which fence to remove |
-| Draw toolbar polish | Deferred | Functionality over appearance for prototype |
+| Target ID | `"simulated-target"` hardcoded | Stable ID for presence diffing |
+| Map SSR | `dynamic` with `ssr: false` | Leaflet needs browser environment |
+| Dashboard map prop | `React.ReactNode` | Keeps dashboard component SSR-safe |
+| Alerts order | Reversed in sidebar | Newest alert visible at top without scrolling |
 
 ---
 

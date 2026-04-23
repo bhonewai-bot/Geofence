@@ -1,5 +1,4 @@
 import { generateId } from "@/lib/geofence/geojson";
-import { createSimulator } from "@/lib/mock/target-simulator";
 import { AlertEvent, Geofence, PresenceState, Target } from "@/types/geofence";
 import { create } from "zustand";
 

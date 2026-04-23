@@ -17,7 +17,7 @@ export type Target = {
 
 export type AlertEvent = {
   id: string;
-  geometryId: string;
+  fenceId: string;
   targetId: string;
   type: "enter" | "exit";
   createdAt: string;
